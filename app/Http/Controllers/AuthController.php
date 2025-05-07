@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use PragmaRX\Google2FAQRCode\Google2FA;
+
 
 class AuthController extends Controller
 {
@@ -35,11 +37,20 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-        if (!$token = JWTAuth::attempt($credentials)) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
+        if (!$token = auth('api')->attempt($credentials)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        return response()->json(['token' => $token]);
+        $user = auth('api')->user();
+
+        if ($user->two_factor_secret) {
+            return response()->json([
+                'requires_2fa' => true,
+                'temp_token' => $token,
+            ]);
+        }
+
+        return $this->respondWithToken($token);
     }
 
     
@@ -47,4 +58,30 @@ class AuthController extends Controller
     {
         return response()->json(auth()->user());
     }
+
+    public function verify2fa(Request $request)
+    {
+        $request->validate(['code' => 'required']);
+        $user = $user = auth('api')->user();        ;
+
+        $google2fa = new \PragmaRX\Google2FAQRCode\Google2FA();
+        $secret = Crypt::decrypt($user->two_factor_secret);
+
+        if ($google2fa->verifyKey($secret, $request->code)) {
+            $token = auth('api')->login($user);
+            return $this->respondWithToken($token);
+        }
+
+        return response()->json(['message' => 'Invalid 2FA code'], 403);
+    }
+
+    protected function respondWithToken($token)
+    {
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('api')->factory()->getTTL() * 60
+        ]);
+    }
+
 }
