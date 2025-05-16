@@ -26,6 +26,11 @@ COPY . /var/www
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www
 
+RUN git config --global --add safe.directory /var/www
+
+RUN pecl install mongodb \
+    && docker-php-ext-enable mongodb
+
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
 EXPOSE 9000

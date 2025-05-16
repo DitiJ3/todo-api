@@ -25,3 +25,5 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/tasks/{id}', [TaskController::class, 'update']);
     Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
 });
+
+Route::post('/tasks/{id}/attributes', [TaskController::class, 'addAttribute']);

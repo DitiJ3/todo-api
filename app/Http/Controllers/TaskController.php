@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Task;
 use Illuminate\Support\Facades\Validator;
+use App\Models\TodoAttribute;
+
 
 class TaskController extends Controller
 {
@@ -33,7 +35,7 @@ class TaskController extends Controller
 
     public function index()
     {
-        $tasks = auth()->user()->tasks;
+        $tasks = Task::with('attributes')->get();
         return response()->json($tasks);
     }
 
@@ -71,5 +73,23 @@ class TaskController extends Controller
         $task->delete();
 
         return response()->json(['message' => 'Task deleted']);
+    }
+
+    public function addAttribute(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'value' => 'required|string'
+        ]);
+
+        $task = Task::findOrFail($id);
+
+        $attribute = TodoAttribute::create([
+            'name' => $request->name,
+            'value' => $request->value,
+            'todo_item_id' => $task->id
+        ]);
+
+        return response()->json($attribute, 201);
     }
 }
